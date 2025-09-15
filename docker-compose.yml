@@ -35,6 +35,9 @@ services:
       DB_POSTGRESDB_USER: n8n
       DB_POSTGRESDB_PASSWORD: n8n
       N8N_ENCRYPTION_KEY: a_secure_encryption_key
+      WEBHOOK_URL: ${WEBHOOK_URL}
+    env_file:
+      - .env
     volumes:
       - n8n_oss_storage:/home/node/.n8n
       - C:/Users/Manan/Documents:/data/docs
