@@ -1,0 +1,241 @@
+{
+  "name": "Master Sheet Update",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "863c5673-f75a-4f8e-8314-a5b375d5f8ea",
+      "name": "Telegram Trigger",
+      "webhookId": "9b09751d-0f76-434e-9c2a-322b69d6ac05",
+      "credentials": {
+        "telegramApi": {
+          "id": "2GVdoftc7WBoFGcZ",
+          "name": "PNL Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $json.message.text;\n\n// 1. Regex to find the date line (now accepts 2 or 4-digit years)\nconst dateRegex = /Date:\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{2,4})/i;\nconst dateMatch = message.match(dateRegex);\nlet entryDate;\n\n// 2. Format the date into YYYY-MM-DD format if found\n//    Otherwise, default to the current date as a fallback.\nif (dateMatch && dateMatch[1]) {\n  const dateParts = dateMatch[1].split('/'); // e.g., [\"11\", \"9\", \"25\"]\n  const day = dateParts[0].padStart(2, '0');\n  const month = dateParts[1].padStart(2, '0');\n  let year = dateParts[2];\n  \n  // Handle 2-digit years by assuming the 21st century\n  if (year.length === 2) {\n    year = '20' + year;\n  }\n\n  entryDate = `${year}-${month}-${day}`;\n} else {\n  entryDate = new Date().toISOString().slice(0, 10); // Fallback\n}\n\n\n// Regex with global flag to capture all user data occurrences\nconst aliasRegex = /User Alias:\\s*([^,\\n]+)/gi;\nconst mtmRegex = /MTM:\\s*(-?\\d+\\.?\\d*)/gi;\nconst results = [];\nlet aliasMatch, mtmMatch;\n\n// Loop through all matches found in the text\nwhile ((aliasMatch = aliasRegex.exec(message)) && (mtmMatch = mtmRegex.exec(message))) {\n  // Build clean JSON object for each user\n  const row = {\n    \"Entry Date\": entryDate.trim(), // 3. Use the extracted or fallback date\n    \"Day PnL\": parseFloat(mtmMatch[1]),\n    \"User Alias\": aliasMatch[1].trim()\n  };\n\n  // Normalize keys and values for consistency\n  const clean = {};\n  for (const [key, val] of Object.entries(row)) {\n    clean[key.trim()] =\n      typeof val === \"string\" ? val.trim() : val;\n  }\n\n  results.push({ json: clean });\n}\n\n// Handle cases where no data could be extracted\nif (results.length === 0) {\n  return [\n    {\n      json: {\n        error: true,\n        errorMessage: \"No User Alias / MTM pairs found\"\n      }\n    }\n  ];\n}\n\nreturn results;\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f0bad14e-4fab-4653-8c83-436a35209d9c",
+      "name": "Parse Alias + MTM"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1PvEe_q6vGA66HV1tohv9Y3guPTsu98WzeI3GF5V1JLk",
+          "mode": "list",
+          "cachedResultName": "Master Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PvEe_q6vGA66HV1tohv9Y3guPTsu98WzeI3GF5V1JLk/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PvEe_q6vGA66HV1tohv9Y3guPTsu98WzeI3GF5V1JLk/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "User Alias",
+              "lookupValue": "={{ $json['User Alias'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "88316fad-ff64-4f12-972d-59d8aad4675d",
+      "name": "Master Sheet Lookup",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4vaPKc2Yv64X12FW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=MTM updated successfully for {{ $('Edit Fields').item.json['User Alias'] }} on {{ $('Edit Fields').item.json['Entry Date'] }} (MTM: {{ $('Edit Fields').item.json['Day PnL'] }} )",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "8a86fbcf-92c6-426f-8982-681262e11c1d",
+      "name": "Send Success Message",
+      "webhookId": "fe24ba61-2c12-4986-8ecb-c2f5fe85e534",
+      "credentials": {
+        "telegramApi": {
+          "id": "2GVdoftc7WBoFGcZ",
+          "name": "PNL Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bae55f0f-d244-45b3-8b54-f9b632783912",
+              "name": "Entry Date",
+              "value": "={{ $('Parse Alias + MTM').item.json['Entry Date'] }}",
+              "type": "string"
+            },
+            {
+              "id": "c35ac2ab-4a7c-4150-81ad-c73206829f78",
+              "name": "Day PnL",
+              "value": "={{ $('Parse Alias + MTM').item.json['Day PnL'] }}",
+              "type": "number"
+            },
+            {
+              "id": "42a93af7-f152-4a43-b8b3-1619ccb914c0",
+              "name": "Sheet ID",
+              "value": "={{ $json['Sheet ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "5fa013e2-39e9-436a-a0f6-5ec1a1e21b06",
+              "name": "User Alias",
+              "value": "={{ $json['User Alias'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        0
+      ],
+      "id": "1d79a1f5-3cab-4c90-bc75-c000ca4dca99",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$json['Sheet ID']}}/values/Data!A1:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $json['Entry Date'] }}\",\n      \"{{ $json['Day PnL'] }}\"\n    ]\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "d2845ed0-429d-4972-b275-afd1420f395b",
+      "name": "HTTP Request",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4vaPKc2Yv64X12FW",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Alias + MTM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alias + MTM": {
+      "main": [
+        [
+          {
+            "node": "Master Sheet Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Master Sheet Lookup": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "64c0bdf5-cad5-4105-a844-9e0365154cf1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "97cdaab89af73ebd5970b4d23e9d1859d7eb3b935c78db3eb6127ddba5b4902d"
+  },
+  "id": "lETWY3tZnMy5SjSq",
+  "tags": []
+}

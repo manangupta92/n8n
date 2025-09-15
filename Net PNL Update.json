@@ -1,0 +1,279 @@
+{
+  "name": "Net PNL Update",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please analyze the attached Contract Note below and return in the JSON format:\n{{ $json.text }} \n\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an assistant that extracts P&L data from broker contract note text."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        96
+      ],
+      "id": "448741f7-a898-45bb-8086-b296bcc137f9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "chatId": "1834640908",
+        "text": "={{ $('AI Agent').item.json.output.trade_date }}\n{{ $('AI Agent').item.json.output.broker_name }} : \n\nNet PNL : {{ $('AI Agent').item.json.output.net_pnl }}\nTotal Charges: {{ $('AI Agent').item.json.output.total_charges }}\nGross PNL : {{ $('AI Agent').item.json.output.gross_pnl }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        96
+      ],
+      "id": "855e4dc1-e343-4a4a-870c-6d14e38192b6",
+      "name": "Send a text message",
+      "webhookId": "d7952950-e405-4910-a191-99a173f49d59",
+      "credentials": {
+        "telegramApi": {
+          "id": "MXtcj84Ea0KIwhxO",
+          "name": "LLM Stoicks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {
+          "password": "AXQPG3481J"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        176,
+        96
+      ],
+      "id": "94c4f5a3-1218-47b9-a2ff-964326fb8e92",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        336,
+        320
+      ],
+      "id": "279724cc-80a6-4e0b-bba3-3bcd3461c5c1",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iVnqYswnGHmpUOPn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"trade_date\": \"dd-mm-yyyy\",\n  \"gross_pnl\": 1234,\n  \"brokerage\": -100,\n  \"exchange_charges\": -122,\n  \"stt\": -122,\n  \"total_charges\" : -122,\n  \"net_pnl\": 1100,\n  \"broker_name\": \"zerodha\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        544,
+        320
+      ],
+      "id": "f24efc8d-f71a-4d95-b67c-1f3a198a3370",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/1UVccQ-MtToEU0mpXlAS_Yb4c7TECzNXQyuEJSRjev7Q/values/Data!A1:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $json.output.trade_date }}\",\n      \"{{ $json.output.gross_pnl }}\",\n      \"{{ $json.output.brokerage }}\",\n      \"{{ $json.output.exchange_charges }}\",\n      \"{{ $json.output.stt }}\",\n      \"{{ $json.output.total_charges }}\",\n      \"{{ $json.output.broker_name }}\",\n      \"{{ $json.output.net_pnl }}\"\n    ]\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        96
+      ],
+      "id": "cd4ee0e6-841a-4114-9f29-914451530a35",
+      "name": "HTTP Request",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4vaPKc2Yv64X12FW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "subject: CLIENT:J238 DIGITAL CONTRACT NOTE",
+          "sender": ""
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "name": "AC Aggarwal",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        192
+      ],
+      "id": "7a70a040-6762-4ff6-8dae-9b5b00d47d67",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oqSmMZ5kNBXKV9ne",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "no-reply-contract-notes@reportsmailer.zerodha.net"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "name": "Zerodha",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "42b62bd1-dd22-411a-8e40-ff66dca69c72",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oqSmMZ5kNBXKV9ne",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AC Aggarwal": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zerodha": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b402a327-eebc-4fe4-be3f-7703203f45c6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "97cdaab89af73ebd5970b4d23e9d1859d7eb3b935c78db3eb6127ddba5b4902d"
+  },
+  "id": "sHLrLDSVWshI9bOm",
+  "tags": []
+}
