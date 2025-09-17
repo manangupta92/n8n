@@ -7,7 +7,7 @@
         "text": "=Please analyze the attached Contract Note below and return in the JSON format:\n{{ $json.text }} \n\n",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are an assistant that extracts P&L data from broker contract note text."
+          "systemMessage": "You are an assistant that extracts FNO P&L data from broker contract note text. Dont include equity data from the contract note, only get FNO data"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -68,21 +68,22 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        336,
+        416,
         320
       ],
       "id": "279724cc-80a6-4e0b-bba3-3bcd3461c5c1",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "iVnqYswnGHmpUOPn",
-          "name": "Google Gemini(PaLM) Api account"
+          "id": "mXOZEbn3xrAqNs7A",
+          "name": "Google Gemini(PaLM) Gemini API"
         }
       }
     },
     {
       "parameters": {
-        "jsonSchemaExample": "{\n  \"trade_date\": \"dd-mm-yyyy\",\n  \"gross_pnl\": 1234,\n  \"brokerage\": -100,\n  \"exchange_charges\": -122,\n  \"stt\": -122,\n  \"total_charges\" : -122,\n  \"net_pnl\": 1100,\n  \"broker_name\": \"zerodha\"\n}"
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"trade_date\": {\n\t\t\t\"type\": \"string\",\n            \"description\": \"Date of Trade\",\n            \"format\": \"date\"\n\t\t},\n      \"gross_pnl\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"Gross PNL\"\n\t\t},\n      \"brokerage\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"Brokerage\"\n\t\t},\n      \"exchange_charges\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"Exchange Charges\"\n\t\t},\n      \"stt\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"STT\"\n\t\t},\n      \"total_charges\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"Total Charges\"\n\t\t},\n      \"net_pnl\": {\n\t\t\t\"type\": \"number\",\n            \"description\": \"Net PNL(including Charges)\"\n\t\t},\n      \"client_id\": {\n\t\t\t\"enum\": [\"YT4169\", \"J238\", \"FT005712\"]\n\t\t}\n\t}\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -101,7 +102,7 @@
         "nodeCredentialType": "googleSheetsOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $json.output.trade_date }}\",\n      \"{{ $json.output.gross_pnl }}\",\n      \"{{ $json.output.brokerage }}\",\n      \"{{ $json.output.exchange_charges }}\",\n      \"{{ $json.output.stt }}\",\n      \"{{ $json.output.total_charges }}\",\n      \"{{ $json.output.broker_name }}\",\n      \"{{ $json.output.net_pnl }}\"\n    ]\n  ]\n} ",
+        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $json.output.trade_date }}\",\n      \"{{ $json.output.gross_pnl }}\",\n      \"{{ $json.output.brokerage }}\",\n      \"{{ $json.output.exchange_charges }}\",\n      \"{{ $json.output.stt }}\",\n      \"{{ $json.output.total_charges }}\",\n      \"{{ $json.output.client_id }}\",\n      \"{{ $json.output.net_pnl }}\",\n      \"PENDING\"\n    ]\n  ]\n} ",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -265,11 +266,11 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b402a327-eebc-4fe4-be3f-7703203f45c6",
+  "versionId": "9ce3f4d7-4d9f-485c-94bc-553e62dff1a3",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "97cdaab89af73ebd5970b4d23e9d1859d7eb3b935c78db3eb6127ddba5b4902d"
